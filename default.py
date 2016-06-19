@@ -9,6 +9,7 @@ import urllib2
 import xbmcaddon
 import xbmcgui
 import xbmcplugin
+from operator import itemgetter
 
 # TVP Historia - plugin do XBMC
 # by Bohdan Bobrowski 2016
@@ -26,18 +27,12 @@ def ListaKategorii():
         response = urllib2.urlopen(req)
         html=response.read()
         response.close()        
-        match=re.findall('<img src="([^"]+)" alt="[^"]*" />[\s]*</div>[\s]*<div class="itemContent">[\s]*<div>[\s]*<ul class="headP">[\s]*<li>[\s]*<span class="icon more"></span>[\s]*</li>[\s]*<li>[\s]*<strong[\s]+class="shortTitle">[\s]*<a[\s]+href="/([0-9]{1,10})/([^"]+)"[\s]+title="([^"]*)',html)
-        categories = []
-        for image,tvp_id,tvp_url,title in match:
+        categories=re.findall('<img src="([^"]+)" alt="[^"]*" />[\s]*</div>[\s]*<div class="itemContent">[\s]*<div>[\s]*<ul class="headP">[\s]*<li>[\s]*<span class="icon more"></span>[\s]*</li>[\s]*<li>[\s]*<strong[\s]+class="shortTitle">[\s]*<a[\s]+href="/([0-9]{1,10})/([^"]+)"[\s]+title="([^"]*)',html)
+        categories=sorted(categories, key=itemgetter(2))
+        for image,tvp_id,tvp_url,title in categories:
             title = title.strip()
-            category = [tvp_id,tvp_url,title]
-            categories.append(category)
-            href="http://vod.tvp.pl/shared/listing.php?parent_id="+tvp_id+"&page=PAGENR&type=video&order=release_date_long,-1&filter={%22playable%22:true}&direct=false&template=directory/listing.html&count=15"
+            href="http://vod.tvp.pl/shared/listing.php?parent_id="+tvp_id+"&page=PAGENR&type=video&order=release_date_long,-1&filter={%22playable%22:true}&direct=false&template=directory/listing.html&count=12"
             addDir(title,href,image,1)
-        categories_json = json.dumps(categories)
-        categories_file = open(addonUserDataFolder + "/categories.json", "w")
-        categories_file.write(categories_json)
-        categories_file.close()
 
 def ListaFilmow(url,name,page):
         m = hashlib.md5()
@@ -50,6 +45,7 @@ def ListaFilmow(url,name,page):
         response.close()
         filmy = re.findall('<img src="([^"]+)" alt="[^"]*" />[\s]*</div>[\s]*<div class="itemContent">[\s]*<div>[\s]*<ul class="headP">[\s]*<li>[\s]*<span class="icon more"></span>[\s]*</li>[\s]*<li>[\s]*<strong[\s]+class="shortTitle">[\s]*<a[\s]+href="/([0-9]{1,10})/([^"]+)"[\s]+title="([^"]*)',html)
         videos = {}
+        ilosc_filmow=0
         if os.path.isfile(addonUserDataFolder + "/videos.json"):
             with open(addonUserDataFolder + "/videos.json", "r") as f:
                 for line in f:
@@ -57,6 +53,7 @@ def ListaFilmow(url,name,page):
         for image,tvp_id,tvp_url,title in filmy:
             if videos.get(tvp_id) is not None:
                 if videos[tvp_id]:
+                    ilosc_filmow=ilosc_filmow+1
                     addLink(title, videos[tvp_id], image) 
             else:
                 req_v = urllib2.Request('http://www.tvp.pl/sess/tvplayer.php?object_id='+tvp_id)            
@@ -71,10 +68,11 @@ def ListaFilmow(url,name,page):
                     plikwideo = plikwideo.replace('video-4.mp4','video-6.mp4')
                     plikwideo = plikwideo.replace('video-5.mp4','video-6.mp4')
                     videos[tvp_id] = plikwideo
+                    ilosc_filmow=ilosc_filmow+1
                     addLink(title, plikwideo, image) 
                 else:
                     videos[tvp_id] = False
-        if len(filmy) > 14:
+        if ilosc_filmow > 11:
             addPageLink("Strona "+str(page+1), url, page+1)
         # Cache z informacjami o plikach wideo:
         videos_json = json.dumps(videos)
