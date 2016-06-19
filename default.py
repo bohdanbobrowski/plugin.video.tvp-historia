@@ -21,12 +21,16 @@ if not os.path.isdir(addonUserDataFolder):
     os.mkdir(addonUserDataFolder)
 linki = {}  
 
-def ListaKategorii():
-        req = urllib2.Request('http://vod.tvp.pl/shared/listing.php?parent_id=6718966&page=1&type=website&direct=false&template=directory/listing_series.html&count=100')
+def getContents(url):
+        req = urllib2.Request(url)
         req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
         response = urllib2.urlopen(req)
         html=response.read()
         response.close()        
+        return html
+
+def ListaKategorii():
+        html=getContents('http://vod.tvp.pl/shared/listing.php?parent_id=6718966&page=1&type=website&direct=false&template=directory/listing_series.html&count=100')
         categories=re.findall('<img src="([^"]+)" alt="[^"]*" />[\s]*</div>[\s]*<div class="itemContent">[\s]*<div>[\s]*<ul class="headP">[\s]*<li>[\s]*<span class="icon more"></span>[\s]*</li>[\s]*<li>[\s]*<strong[\s]+class="shortTitle">[\s]*<a[\s]+href="/([0-9]{1,10})/([^"]+)"[\s]+title="([^"]*)',html)
         categories=sorted(categories, key=itemgetter(2))
         for image,tvp_id,tvp_url,title in categories:
@@ -38,11 +42,7 @@ def ListaFilmow(url,name,page):
         m = hashlib.md5()
         m.update(url+time.strftime("%Y%m%d"))
         page_url = url.replace('PAGENR',str(page))
-        req = urllib2.Request(page_url)
-        req.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
-        response = urllib2.urlopen(req)
-        html = response.read()
-        response.close()
+        html=getContents(page_url)
         filmy = re.findall('<img src="([^"]+)" alt="[^"]*" />[\s]*</div>[\s]*<div class="itemContent">[\s]*<div>[\s]*<ul class="headP">[\s]*<li>[\s]*<span class="icon more"></span>[\s]*</li>[\s]*<li>[\s]*<strong[\s]+class="shortTitle">[\s]*<a[\s]+href="/([0-9]{1,10})/([^"]+)"[\s]+title="([^"]*)',html)
         videos = {}
         ilosc_filmow=0
@@ -56,11 +56,7 @@ def ListaFilmow(url,name,page):
                     ilosc_filmow=ilosc_filmow+1
                     addLink(title, videos[tvp_id], image) 
             else:
-                req_v = urllib2.Request('http://www.tvp.pl/sess/tvplayer.php?object_id='+tvp_id)            
-                req_v.add_header('User-Agent', 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
-                response_v = urllib2.urlopen(req_v)
-                html_v = response_v.read()
-                response_v.close()
+                html_v=getContents('http://www.tvp.pl/sess/tvplayer.php?object_id='+tvp_id)
                 plikwideo = re.findall("{src:'([^']*)', type: 'video/mp4'}",html_v)
                 if plikwideo and plikwideo[0]:
                     plikwideo = plikwideo[0]
